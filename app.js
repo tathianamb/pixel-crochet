@@ -20,7 +20,6 @@ if ('serviceWorker' in navigator) {
 
 const STORAGE_KEY = 'croche_pixel_projeto_v3';
 const CELL_PX = 22;
-const MAX_PALETTE_COLORS = 6;
 const TOTAL_SCREENS = 4;
 
 const state = {
@@ -232,14 +231,17 @@ const btnStartGrid = $('btnStartGrid');
 const quickPreviewCanvas = $('quickPreviewCanvas');
 const qctx = quickPreviewCanvas.getContext('2d');
 
+const colorCountSelect = $('colorCountSelect');
+
 btnStartGrid.addEventListener('click', () => {
   if (!state.uploadedImage) return;
   const w = Math.max(1, Math.min(200, parseInt(widthInput.value || '39', 10)));
   const h = Math.max(1, Math.min(200, parseInt(heightInput.value || '28', 10)));
+  const numColors = Math.max(2, Math.min(6, parseInt(colorCountSelect.value || '2', 10)));
   state.width = w;
   state.height = h;
 
-  const { grid, palette } = sampleImageToGrid(state.uploadedImage, w, h);
+  const { grid, palette } = sampleImageToGrid(state.uploadedImage, w, h, numColors);
   state.grid = grid;
   state.palette = palette;
   state.currentRowFromBottom = 1;
@@ -270,7 +272,7 @@ function renderQuickPreview() {
 }
 
 // ---------- Amostragem de cor ----------
-function sampleImageToGrid(img, w, h) {
+function sampleImageToGrid(img, w, h, numColors) {
   const canvas = document.createElement('canvas');
   canvas.width = img.width;
   canvas.height = img.height;
@@ -311,7 +313,7 @@ function sampleImageToGrid(img, w, h) {
   const flatColors = [];
   for (let ry = 0; ry < h; ry++) for (let rx = 0; rx < w; rx++) flatColors.push(avgColors[ry][rx]);
 
-  const k = Math.min(MAX_PALETTE_COLORS, estimateDistinctColors(flatColors));
+  const k = Math.max(2, Math.min(6, numColors || 2));
   const { centers, assignments } = kMeans(flatColors, k);
 
   const order = centers.map((c, i) => ({ i, light: c[0]+c[1]+c[2] }))
@@ -333,16 +335,6 @@ function sampleImageToGrid(img, w, h) {
   }
 
   return { grid, palette };
-}
-
-function estimateDistinctColors(colors) {
-  const seen = new Set();
-  for (const c of colors) {
-    const key = [Math.round(c[0]/24), Math.round(c[1]/24), Math.round(c[2]/24)].join(',');
-    seen.add(key);
-    if (seen.size >= MAX_PALETTE_COLORS) break;
-  }
-  return Math.max(2, Math.min(MAX_PALETTE_COLORS, seen.size));
 }
 
 function kMeans(pixels, k) {
