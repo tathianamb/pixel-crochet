@@ -4,6 +4,14 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Gráfico de Crochê Pixel</title>
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#EDE7DC" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Crochê Pixel" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="icon" type="image/png" href="icons/icon-192.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -281,11 +289,21 @@
   }
 
   .grid-scroll {
-    overflow: auto;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: white;
     padding: 12px;
+    max-height: 48vh;
+    -webkit-overflow-scrolling: touch;
+  }
+  .grid-scroll canvas {
+    display: block;
+    width: 100%;
+    height: auto;
   }
 
   .stats-bar {

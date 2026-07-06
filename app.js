@@ -9,6 +9,15 @@
 // Tudo roda no navegador. Projeto salvo automaticamente no localStorage.
 // ==========================================================================
 
+// Registra o service worker (necessário para o app ser instalável como PWA)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch((err) => {
+      console.warn('Falha ao registrar service worker:', err);
+    });
+  });
+}
+
 const STORAGE_KEY = 'croche_pixel_projeto_v3';
 const CELL_PX = 22;
 const MAX_PALETTE_COLORS = 6;
