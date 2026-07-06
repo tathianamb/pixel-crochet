@@ -2,10 +2,490 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8" />
-<title>Teste</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Gráfico de Crochê Pixel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --linen: #EDE7DC;
+    --ink: #2B2723;
+    --ink-soft: #6b6459;
+    --thread-red: #B23A2E;
+    --thread-red-soft: #f3ddd9;
+    --thread-olive: #6B7355;
+    --thread-olive-soft: #e4e7dd;
+    --card: #FBF9F5;
+    --border: #d8cfbe;
+    --header-h: 76px;
+    --footer-h: 84px;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    background: var(--linen);
+    color: var(--ink);
+    font-family: 'Lora', Georgia, serif;
+  }
+
+  .topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: var(--header-h);
+    background: var(--linen);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 20;
+    padding: 6px 16px 10px;
+  }
+  .topbar h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .topbar h1 .needle { color: var(--thread-red); }
+
+  .dots {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background 0.2s, transform 0.2s;
+  }
+  .dot.active {
+    background: var(--thread-red);
+    transform: scale(1.3);
+  }
+
+  .carousel {
+    position: fixed;
+    top: var(--header-h);
+    bottom: var(--footer-h);
+    left: 0; right: 0;
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+  .screen {
+    flex: 0 0 100%;
+    width: 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 18px 18px 24px;
+  }
+  .screen-inner {
+    max-width: 520px;
+    margin: 0 auto;
+  }
+
+  .screen h2 {
+    font-size: 1.2rem;
+    margin: 0 0 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .screen h2 .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--thread-red);
+    border: 1.5px solid var(--thread-red);
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .screen p.hint {
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+    margin: 6px 0 18px;
+  }
+
+  .bottombar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: var(--footer-h);
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    z-index: 20;
+  }
+  .bottombar .primary-action {
+    flex: 1;
+  }
+  .bottombar button {
+    margin: 0;
+  }
+  .nav-back {
+    flex: 0 0 auto;
+  }
+
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 32px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    background: var(--linen);
+  }
+  .dropzone.dragover {
+    border-color: var(--thread-red);
+    background: var(--thread-red-soft);
+  }
+  .dropzone input { display: none; }
+  .dropzone .icon { font-size: 2rem; margin-bottom: 8px; }
+  .dropzone .txt { font-size: 0.95rem; color: var(--ink-soft); }
+  .dropzone .txt strong { color: var(--ink); }
+
+  .controls-row {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 18px;
+  }
+
+  .control {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+  }
+  .control label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--ink-soft);
+  }
+  select, input[type="number"] {
+    font-family: 'JetBrains Mono', monospace;
+    padding: 14px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: white;
+    color: var(--ink);
+    font-size: 1.05rem;
+    width: 100%;
+  }
+
+  button {
+    font-family: 'Lora', serif;
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 15px 20px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.15s;
+    min-height: 50px;
+  }
+  button:active { transform: scale(0.97); }
+  button:disabled { opacity: 0.4; cursor: default; }
+
+  .btn-block { width: 100%; }
+
+  .btn-primary {
+    background: var(--ink);
+    color: var(--linen);
+  }
+  .btn-primary:hover:not(:disabled) { background: #453f38; }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--ink);
+    border: 1.5px solid var(--border);
+  }
+  .btn-outline:hover:not(:disabled) { border-color: var(--ink); }
+
+  .btn-danger-outline {
+    background: transparent;
+    color: var(--thread-red);
+    border: 1.5px solid var(--thread-red);
+  }
+
+  .btn-icon {
+    background: transparent;
+    color: var(--ink);
+    border: 1.5px solid var(--border);
+    padding: 15px 18px;
+    min-width: 54px;
+  }
+
+  .border-btn-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 18px;
+  }
+  .border-btn-grid button {
+    font-size: 0.82rem;
+    padding: 12px 8px;
+    min-height: 44px;
+  }
+
+  .upload-preview {
+    margin-top: 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background:
+      linear-gradient(45deg, #ddd 25%, transparent 25%),
+      linear-gradient(-45deg, #ddd 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #ddd 75%),
+      linear-gradient(-45deg, transparent 75%, #ddd 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    max-height: 220px;
+  }
+  .upload-preview img {
+    max-width: 100%;
+    max-height: 220px;
+    display: block;
+    image-rendering: pixelated;
+  }
+
+  .grid-scroll {
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: white;
+    padding: 12px;
+  }
+
+  .stats-bar {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+  .stats-bar strong { color: var(--ink); }
+
+  .counter-display {
+    background: var(--ink);
+    color: var(--linen);
+    border-radius: 14px;
+    padding: 20px 28px;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .counter-display .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.65;
+  }
+  .counter-display .num {
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 1.1;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .counter-display .num .total {
+    font-size: 1.3rem;
+    opacity: 0.55;
+  }
+
+  .save-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--thread-olive);
+    margin-top: 10px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .save-indicator.show { opacity: 1; }
+
+  .project-note {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--thread-olive);
+    background: var(--thread-olive-soft);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+  }
+
+  .hidden { display: none !important; }
+
+  .focus-visible-ring:focus-visible {
+    outline: 2px solid var(--thread-red);
+    outline-offset: 2px;
+  }
+</style>
 </head>
 <body>
-  <h1>Teste de deploy</h1>
-  <p>Se você está vendo esta página, o deploy funcionou.</p>
+
+<div class="topbar">
+  <h1><span class="needle">✂</span> Gráfico de Crochê Pixel</h1>
+  <div class="dots" id="dots">
+    <div class="dot active" data-dot="0"></div>
+    <div class="dot" data-dot="1"></div>
+    <div class="dot" data-dot="2"></div>
+    <div class="dot" data-dot="3"></div>
+  </div>
+</div>
+
+<div class="carousel" id="carousel">
+
+  <!-- SCREEN 0: Upload -->
+  <section class="screen" id="screen0" data-screen="0">
+    <div class="screen-inner">
+      <h2><span class="num">1</span> Envie sua imagem já pixelada</h2>
+      <p class="hint">A imagem deve já estar em pixel art (blocos de cor sólida).</p>
+
+      <label class="dropzone" id="dropzone" for="fileInput">
+        <div class="icon">🧵</div>
+        <div class="txt"><strong>Toque para escolher</strong> uma imagem pixelada</div>
+        <input type="file" id="fileInput" accept="image/*" />
+      </label>
+
+      <div class="upload-preview hidden" id="uploadPreviewWrap">
+        <img id="uploadPreviewImg" alt="Pré-visualização da imagem enviada" />
+      </div>
+    </div>
+  </section>
+
+  <!-- SCREEN 1: Choose grid size + quick preview -->
+  <section class="screen" id="screen1" data-screen="1">
+    <div class="screen-inner">
+      <h2><span class="num">2</span> Quantas colunas e linhas?</h2>
+      <p class="hint">Informe o tamanho e toque em "Gerar". Pode testar valores diferentes quantas vezes quiser.</p>
+
+      <div class="controls-row">
+        <div class="control">
+          <label>Colunas (largura)</label>
+          <input type="number" inputmode="numeric" id="widthInput" min="1" max="200" value="39" />
+        </div>
+        <div class="control">
+          <label>Linhas (altura)</label>
+          <input type="number" inputmode="numeric" id="heightInput" min="1" max="200" value="28" />
+        </div>
+      </div>
+
+      <div class="controls-row">
+        <button class="btn-primary btn-block" id="btnStartGrid">Gerar / atualizar gráfico</button>
+      </div>
+
+      <div class="hidden" id="quickPreviewWrap" style="margin-top:22px;">
+        <p class="hint" style="margin-top:0;">Resultado:</p>
+        <div class="grid-scroll">
+          <canvas id="quickPreviewCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCREEN 2: Border adjustment -->
+  <section class="screen" id="screen2" data-screen="2">
+    <div class="screen-inner">
+      <h2><span class="num">3</span> Ajuste linhas e colunas</h2>
+      <p class="hint">Ajuste as bordas se precisar. Tudo é salvo automaticamente.</p>
+
+      <div class="border-btn-grid">
+        <button class="btn-outline" id="btnAddRowTop">+ Linha no topo</button>
+        <button class="btn-outline" id="btnAddRowBottom">+ Linha embaixo</button>
+        <button class="btn-outline" id="btnRemoveRowTop">− Linha do topo</button>
+        <button class="btn-outline" id="btnRemoveRowBottom">− Linha de baixo</button>
+        <button class="btn-outline" id="btnAddColLeft">+ Coluna esquerda</button>
+        <button class="btn-outline" id="btnAddColRight">+ Coluna direita</button>
+        <button class="btn-outline" id="btnRemoveColLeft">− Coluna esquerda</button>
+        <button class="btn-outline" id="btnRemoveColRight">− Coluna direita</button>
+      </div>
+
+      <div class="grid-scroll" style="margin-top: 18px;">
+        <canvas id="gridCanvas"></canvas>
+      </div>
+
+      <div class="stats-bar" id="gridStats"></div>
+      <div class="save-indicator" id="saveIndicator">✓ salvo neste navegador</div>
+
+      <div class="controls-row">
+        <button class="btn-outline btn-block" id="btnDownloadChart">⬇ Baixar gráfico (PNG)</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCREEN 3: Counter -->
+  <section class="screen" id="screen3" data-screen="3">
+    <div class="screen-inner">
+      <h2><span class="num">4</span> Contador de carreiras</h2>
+
+      <div class="project-note hidden" id="projectNote"></div>
+
+      <div class="counter-display">
+        <div class="label">Carreira</div>
+        <div class="num"><span id="counterCurrent">1</span><span class="total"> / <span id="counterTotal">1</span></span></div>
+      </div>
+
+      <div class="controls-row" style="margin-top:0;">
+        <button class="btn-primary btn-block" id="btnCounterNext">Próxima carreira →</button>
+        <div class="border-btn-grid" style="grid-template-columns: 1fr 1fr; margin-top: 0;">
+          <button class="btn-outline" id="btnCounterPrev">← Anterior</button>
+          <button class="btn-danger-outline" id="btnCounterReset">Reiniciar</button>
+        </div>
+      </div>
+
+      <div class="stats-bar" id="counterRowStats" style="justify-content:center; margin: 14px 0;"></div>
+
+      <div class="grid-scroll">
+        <canvas id="counterCanvas"></canvas>
+      </div>
+
+      <div class="controls-row">
+        <button class="btn-danger-outline btn-block" id="btnNewProject">Começar novo projeto</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="bottombar">
+  <button class="btn-icon nav-back" id="btnNavBack" aria-label="Voltar">←</button>
+  <button class="btn-primary primary-action" id="btnNavNext">Avançar →</button>
+</div>
+
+<script src="app.js"></script>
 </body>
 </html>
