@@ -10,11 +10,22 @@
 // ==========================================================================
 
 // Registra o service worker (necessário para o app ser instalável como PWA)
+// e força a checagem por uma versão nova sempre que o app é aberto, recarregando
+// automaticamente quando essa versão nova assumir o controle da página.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch((err) => {
+    navigator.serviceWorker.register('sw.js').then((reg) => {
+      reg.update(); // verifica ativamente por uma versão nova agora
+    }).catch((err) => {
       console.warn('Falha ao registrar service worker:', err);
     });
+  });
+
+  let hasReloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hasReloaded) return;
+    hasReloaded = true;
+    window.location.reload();
   });
 }
 

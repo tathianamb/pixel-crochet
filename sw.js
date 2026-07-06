@@ -1,7 +1,8 @@
 // Service worker mínimo — necessário para o Chrome considerar o site instalável (PWA).
-// Faz cache básico dos arquivos principais para que o app abra mesmo offline.
+// Estratégia "network-first": sempre tenta buscar a versão mais nova da rede primeiro,
+// e só usa o cache como reserva se estiver offline. Isso evita ficar preso numa versão antiga.
 
-const CACHE_NAME = 'croche-pixel-v1';
+const CACHE_NAME = 'croche-pixel-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -29,8 +30,13 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request).catch(() => cached);
-    })
+    fetch(event.request)
+      .then((response) => {
+        // Atualiza o cache com a versão mais recente buscada da rede
+        const responseClone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+        return response;
+      })
+      .catch(() => caches.match(event.request)) // offline -> usa o cache como reserva
   );
 });
