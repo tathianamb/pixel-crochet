@@ -33,8 +33,15 @@ const dots = document.querySelectorAll('.dot');
 const btnNavBack = $('btnNavBack');
 const btnNavNext = $('btnNavNext');
 
+function maxUnlockedScreen() {
+  if (state.grid) return 3; // grade já existe (gerada ou restaurada) -> tudo liberado
+  if (!state.uploadedImage) return 0;
+  return 1; // imagem enviada, mas ainda não gerou grade
+}
+
 function goToScreen(n, { instant = false } = {}) {
   n = Math.max(0, Math.min(TOTAL_SCREENS - 1, n));
+  n = Math.min(n, maxUnlockedScreen());
   state.currentScreen = n;
   const target = $('screen' + n);
   target.scrollIntoView({ behavior: instant ? 'auto' : 'smooth', inline: 'start', block: 'nearest' });
@@ -75,12 +82,18 @@ btnNavBack.addEventListener('click', () => {
   goToScreen(state.currentScreen - 1);
 });
 
-// Detecta a tela visível quando o usuário arrasta (swipe) manualmente
+// Detecta a tela visível quando o usuário arrasta (swipe) manualmente.
+// Se a pessoa arrastar além do que está liberado, "empurra" de volta ao limite.
 let scrollDebounce = null;
 carousel.addEventListener('scroll', () => {
   clearTimeout(scrollDebounce);
   scrollDebounce = setTimeout(() => {
     const idx = Math.round(carousel.scrollLeft / carousel.clientWidth);
+    const maxAllowed = maxUnlockedScreen();
+    if (idx > maxAllowed) {
+      goToScreen(maxAllowed);
+      return;
+    }
     if (idx !== state.currentScreen) {
       state.currentScreen = idx;
       updateNavUI();
@@ -92,11 +105,10 @@ carousel.addEventListener('scroll', () => {
 dots.forEach((dot, i) => {
   dot.style.cursor = 'pointer';
   dot.addEventListener('click', () => {
-    // só permite pular para telas já alcançáveis
-    if (i === 0) goToScreen(0);
-    else if (i === 1 && state.uploadedImage) goToScreen(1);
-    else if (i === 2 && state.grid) goToScreen(2);
-    else if (i === 3 && state.grid) { goToScreen(3); renderCounter(); }
+    if (i <= maxUnlockedScreen()) {
+      goToScreen(i);
+      if (i === 3) renderCounter();
+    }
   });
 });
 
