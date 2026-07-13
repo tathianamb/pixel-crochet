@@ -383,6 +383,51 @@
     margin-bottom: 16px;
   }
 
+  .projects-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .project-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .project-item-info {
+    flex: 1;
+    cursor: pointer;
+    min-width: 0;
+  }
+  .project-item-name {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .project-item-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    margin-top: 3px;
+  }
+  .project-item-delete {
+    background: transparent;
+    border: none;
+    font-size: 1.1rem;
+    padding: 8px;
+    min-height: auto;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
   .hidden { display: none !important; }
 
   .focus-visible-ring:focus-visible {
@@ -400,13 +445,30 @@
     <div class="dot" data-dot="1"></div>
     <div class="dot" data-dot="2"></div>
     <div class="dot" data-dot="3"></div>
+    <div class="dot" data-dot="4"></div>
   </div>
 </div>
 
 <div class="carousel" id="carousel">
 
-  <!-- SCREEN 0: Upload -->
+  <!-- SCREEN 0: Lista de projetos -->
   <section class="screen" id="screen0" data-screen="0">
+    <div class="screen-inner">
+      <h2>🧶 Seus projetos</h2>
+      <p class="hint">Toque num projeto para continuar, ou comece um novo.</p>
+
+      <div class="controls-row" style="margin-top: 0;">
+        <button class="btn-primary btn-block" id="btnNewProjectFromList">+ Novo projeto</button>
+      </div>
+
+      <p class="hint hidden" id="projectsEmpty" style="text-align:center; margin-top: 30px;">Nenhum projeto salvo ainda. Toque em "+ Novo projeto" para começar.</p>
+
+      <div id="projectsList" class="projects-list hidden"></div>
+    </div>
+  </section>
+
+  <!-- SCREEN 1: Upload -->
+  <section class="screen" id="screen1" data-screen="1">
     <div class="screen-inner">
       <h2><span class="num">1</span> Envie sua imagem já pixelada</h2>
       <p class="hint">A imagem deve já estar em pixel art (blocos de cor sólida).</p>
@@ -423,8 +485,8 @@
     </div>
   </section>
 
-  <!-- SCREEN 1: Choose grid size + quick preview -->
-  <section class="screen" id="screen1" data-screen="1">
+  <!-- SCREEN 2: Choose grid size + quick preview -->
+  <section class="screen" id="screen2" data-screen="2">
     <div class="screen-inner">
       <h2><span class="num">2</span> Quantas colunas e linhas?</h2>
       <p class="hint">Informe o tamanho e toque em "Gerar". Pode testar valores diferentes quantas vezes quiser.</p>
@@ -463,11 +525,15 @@
     </div>
   </section>
 
-  <!-- SCREEN 2: Border adjustment -->
-  <section class="screen" id="screen2" data-screen="2">
+  <!-- SCREEN 3: Border adjustment -->
+  <section class="screen" id="screen3" data-screen="3">
     <div class="screen-inner">
       <h2><span class="num">3</span> Ajuste linhas e colunas</h2>
       <p class="hint">Ajuste as bordas se precisar. Tudo é salvo automaticamente.</p>
+
+      <div class="controls-row" style="margin-top: 0;">
+        <button class="btn-danger-outline btn-block" id="btnUndo" disabled>↺ Desfazer última alteração</button>
+      </div>
 
       <div class="border-btn-grid">
         <button class="btn-outline" id="btnAddRowTop">+ Linha no topo</button>
@@ -503,8 +569,8 @@
     </div>
   </section>
 
-  <!-- SCREEN 3: Counter -->
-  <section class="screen" id="screen3" data-screen="3">
+  <!-- SCREEN 4: Counter -->
+  <section class="screen" id="screen4" data-screen="4">
     <div class="screen-inner">
       <h2><span class="num">4</span> Contador de carreiras</h2>
 
@@ -530,7 +596,7 @@
       </div>
 
       <div class="controls-row">
-        <button class="btn-danger-outline btn-block" id="btnNewProject">Começar novo projeto</button>
+        <button class="btn-danger-outline btn-block" id="btnNewProject">← Voltar aos projetos</button>
       </div>
     </div>
   </section>

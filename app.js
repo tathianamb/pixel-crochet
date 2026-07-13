@@ -29,11 +29,12 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-const STORAGE_KEY = 'croche_pixel_projeto_v3';
 const CELL_PX = 22;
-const TOTAL_SCREENS = 4;
+const TOTAL_SCREENS = 5;
 
 const state = {
+  projectId: null,
+  projectName: '',
   width: 39,
   height: 28,
   grid: null,
@@ -41,7 +42,7 @@ const state = {
   uploadedImage: null,
   currentRowFromBottom: 1,
   currentScreen: 0,
-  hasGeneratedOnce: false, // controla se pode avançar da tela 1 para a 2
+  hasGeneratedOnce: false, // controla se pode avançar da tela 2 para a 3
 };
 
 function $(id) { return document.getElementById(id); }
@@ -53,9 +54,10 @@ const btnNavBack = $('btnNavBack');
 const btnNavNext = $('btnNavNext');
 
 function maxUnlockedScreen() {
-  if (state.grid) return 3; // grade já existe (gerada ou restaurada) -> tudo liberado
-  if (!state.uploadedImage) return 0;
-  return 1; // imagem enviada, mas ainda não gerou grade
+  if (!state.projectId) return 0; // nenhum projeto aberto -> só a lista
+  if (state.grid) return 4; // grade já existe (gerada ou restaurada) -> tudo liberado
+  if (!state.uploadedImage) return 1; // projeto aberto, mas nada enviado ainda
+  return 2; // imagem enviada, mas ainda não gerou grade
 }
 
 function goToScreen(n, { instant = false } = {}) {
@@ -76,23 +78,26 @@ function updateNavUI() {
   // Texto e estado do botão avançar dependem da tela atual
   if (n === 0) {
     btnNavNext.textContent = 'Avançar →';
-    btnNavNext.disabled = !state.uploadedImage;
+    btnNavNext.disabled = true; // navegação a partir da lista é por toque no projeto/botão novo
   } else if (n === 1) {
     btnNavNext.textContent = 'Avançar →';
-    btnNavNext.disabled = !state.hasGeneratedOnce;
+    btnNavNext.disabled = !state.uploadedImage;
   } else if (n === 2) {
+    btnNavNext.textContent = 'Avançar →';
+    btnNavNext.disabled = !state.hasGeneratedOnce;
+  } else if (n === 3) {
     btnNavNext.textContent = 'Ir para o contador →';
     btnNavNext.disabled = !state.grid;
-  } else if (n === 3) {
+  } else if (n === 4) {
     btnNavNext.textContent = '✓ Fim do fluxo';
     btnNavNext.disabled = true;
   }
 }
 
 btnNavNext.addEventListener('click', () => {
-  if (state.currentScreen === 1 && !state.hasGeneratedOnce) return;
-  if (state.currentScreen === 2) {
-    // Ao ir da tela 2 (bordas) pra 3 (contador), garante que o contador renderize com dados atuais
+  if (state.currentScreen === 2 && !state.hasGeneratedOnce) return;
+  if (state.currentScreen === 3) {
+    // Ao ir da tela 3 (bordas) pra 4 (contador), garante que o contador renderize com dados atuais
     renderCounter();
   }
   goToScreen(state.currentScreen + 1);
@@ -116,7 +121,7 @@ carousel.addEventListener('scroll', () => {
     if (idx !== state.currentScreen) {
       state.currentScreen = idx;
       updateNavUI();
-      if (idx === 3) renderCounter();
+      if (idx === 4) renderCounter();
     }
   }, 80);
 });
@@ -126,15 +131,43 @@ dots.forEach((dot, i) => {
   dot.addEventListener('click', () => {
     if (i <= maxUnlockedScreen()) {
       goToScreen(i);
-      if (i === 3) renderCounter();
+      if (i === 4) renderCounter();
+      if (i === 0) renderProjectsList();
     }
   });
 });
 
-// ---------- Persistência ----------
+// ---------- Persistência (múltiplos projetos) ----------
+const PROJECTS_INDEX_KEY = 'croche_pixel_projetos_index';
+const PROJECT_PREFIX = 'croche_pixel_projeto_';
+
+function getProjectsIndex() {
+  try {
+    const raw = localStorage.getItem(PROJECTS_INDEX_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveProjectsIndex(index) {
+  try {
+    localStorage.setItem(PROJECTS_INDEX_KEY, JSON.stringify(index));
+  } catch (e) {
+    console.warn('Não foi possível salvar o índice de projetos:', e);
+  }
+}
+
+function generateProjectId() {
+  return 'p' + Date.now() + Math.random().toString(36).slice(2, 8);
+}
+
 function saveProject() {
+  if (!state.projectId) return;
   try {
     const payload = {
+      id: state.projectId,
+      name: state.projectName,
       width: state.width,
       height: state.height,
       grid: state.grid,
@@ -142,16 +175,29 @@ function saveProject() {
       currentRowFromBottom: state.currentRowFromBottom,
       savedAt: Date.now(),
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    localStorage.setItem(PROJECT_PREFIX + state.projectId, JSON.stringify(payload));
+
+    // Atualiza o índice (nome, data, id) para a lista de projetos
+    const index = getProjectsIndex();
+    const existing = index.find(p => p.id === state.projectId);
+    if (existing) {
+      existing.name = state.projectName;
+      existing.savedAt = payload.savedAt;
+      existing.width = state.width;
+      existing.height = state.height;
+    } else {
+      index.push({ id: state.projectId, name: state.projectName, savedAt: payload.savedAt, width: state.width, height: state.height });
+    }
+    saveProjectsIndex(index);
     flashSaveIndicator();
   } catch (e) {
     console.warn('Não foi possível salvar o projeto:', e);
   }
 }
 
-function loadProject() {
+function loadProjectById(id) {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(PROJECT_PREFIX + id);
     if (!raw) return null;
     return JSON.parse(raw);
   } catch (e) {
@@ -159,8 +205,14 @@ function loadProject() {
   }
 }
 
-function clearProject() {
-  try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+function deleteProjectById(id) {
+  try {
+    localStorage.removeItem(PROJECT_PREFIX + id);
+    const index = getProjectsIndex().filter(p => p.id !== id);
+    saveProjectsIndex(index);
+  } catch (e) {
+    console.warn('Não foi possível excluir o projeto:', e);
+  }
 }
 
 let saveFlashTimeout = null;
@@ -172,32 +224,114 @@ function flashSaveIndicator() {
   saveFlashTimeout = setTimeout(() => el.classList.remove('show'), 1200);
 }
 
-// ---------- Inicialização: retomar projeto salvo, se houver ----------
+// ---------- Inicialização: mostra a lista de projetos ----------
 window.addEventListener('DOMContentLoaded', () => {
-  const saved = loadProject();
-  if (saved && saved.grid && saved.grid.length) {
-    state.width = saved.width;
-    state.height = saved.height;
-    state.grid = saved.grid;
-    state.palette = saved.palette || [];
-    state.currentRowFromBottom = saved.currentRowFromBottom || 1;
-    state.hasGeneratedOnce = true;
-
-    $('projectNote').classList.remove('hidden');
-    $('projectNote').textContent = `Projeto retomado: ${state.width} × ${state.height} pontos`;
-
-    renderGridEditor();
-    goToScreen(3, { instant: true });
-    renderCounter();
-  } else {
-    updateNavUI();
-  }
+  renderProjectsList();
+  updateNavUI();
 });
 
+function renderProjectsList() {
+  const index = getProjectsIndex().sort((a, b) => b.savedAt - a.savedAt);
+  const listEl = $('projectsList');
+  const emptyEl = $('projectsEmpty');
+  if (!listEl) return;
+
+  listEl.innerHTML = '';
+  if (index.length === 0) {
+    emptyEl.classList.remove('hidden');
+    listEl.classList.add('hidden');
+    return;
+  }
+  emptyEl.classList.add('hidden');
+  listEl.classList.remove('hidden');
+
+  index.forEach((p) => {
+    const item = document.createElement('div');
+    item.className = 'project-item';
+    const date = new Date(p.savedAt);
+    const dateStr = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+    item.innerHTML = `
+      <div class="project-item-info">
+        <div class="project-item-name">${escapeHtml(p.name || 'Projeto sem nome')}</div>
+        <div class="project-item-meta">${p.width} × ${p.height} pontos · ${dateStr}</div>
+      </div>
+      <button class="project-item-delete" aria-label="Excluir projeto" data-id="${p.id}">🗑</button>
+    `;
+    item.querySelector('.project-item-info').addEventListener('click', () => openProject(p.id));
+    item.querySelector('.project-item-delete').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (confirm(`Excluir o projeto "${p.name || 'sem nome'}"? Essa ação não pode ser desfeita.`)) {
+        deleteProjectById(p.id);
+        renderProjectsList();
+      }
+    });
+    listEl.appendChild(item);
+  });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function openProject(id) {
+  const saved = loadProjectById(id);
+  if (!saved || !saved.grid) return;
+  state.projectId = saved.id;
+  state.projectName = saved.name;
+  state.width = saved.width;
+  state.height = saved.height;
+  state.grid = saved.grid;
+  state.palette = saved.palette || [];
+  state.currentRowFromBottom = saved.currentRowFromBottom || 1;
+  state.hasGeneratedOnce = true;
+  undoStack = [];
+
+  $('projectNote').classList.remove('hidden');
+  $('projectNote').textContent = `Projeto: ${state.projectName}`;
+
+  renderGridEditor();
+  goToScreen(4, { instant: true });
+  renderCounter();
+}
+
+$('btnNewProjectFromList').addEventListener('click', () => {
+  startNewProject();
+});
+
+function startNewProject() {
+  state.projectId = generateProjectId();
+  state.projectName = suggestProjectName();
+  state.grid = null;
+  state.palette = [];
+  state.uploadedImage = null;
+  state.hasGeneratedOnce = false;
+  state.currentRowFromBottom = 1;
+  undoStack = [];
+  $('uploadPreviewWrap').classList.add('hidden');
+  $('quickPreviewWrap').classList.add('hidden');
+  $('projectNote').classList.add('hidden');
+  $('fileInput').value = '';
+  goToScreen(1, { instant: true });
+}
+
+function suggestProjectName() {
+  const index = getProjectsIndex();
+  let n = index.length + 1;
+  let name = `Projeto ${n}`;
+  const existingNames = new Set(index.map(p => p.name));
+  while (existingNames.has(name)) {
+    n++;
+    name = `Projeto ${n}`;
+  }
+  return name;
+}
+
 $('btnNewProject').addEventListener('click', () => {
-  if (confirm('Isso vai apagar o projeto atual salvo neste navegador. Quer começar um novo?')) {
-    clearProject();
-    location.reload();
+  if (confirm('Voltar para a lista de projetos? O projeto atual já está salvo.')) {
+    renderProjectsList();
+    goToScreen(0, { instant: true });
   }
 });
 
@@ -517,9 +651,11 @@ $('btnDeleteSelection').addEventListener('click', () => {
   const grid = state.grid;
   if (selectedLine.type === 'row') {
     if (grid.length <= 1) { alert('Não é possível excluir a única carreira restante.'); return; }
+    pushUndoSnapshot();
     grid.splice(selectedLine.index, 1);
   } else {
     if (grid[0].length <= 1) { alert('Não é possível excluir a única coluna restante.'); return; }
+    pushUndoSnapshot();
     grid.forEach(row => row.splice(selectedLine.index, 1));
   }
   selectedLine = null;
@@ -545,36 +681,81 @@ function bgIndex() {
   return lightestIdx;
 }
 
+// ---------- Desfazer (undo) ----------
+// Guarda uma cópia da grade antes de cada alteração estrutural, para poder reverter.
+let undoStack = [];
+const UNDO_LIMIT = 10;
+
+function pushUndoSnapshot() {
+  undoStack.push(JSON.parse(JSON.stringify(state.grid)));
+  if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+  updateUndoButton();
+}
+
+function updateUndoButton() {
+  const btn = $('btnUndo');
+  if (!btn) return;
+  btn.disabled = undoStack.length === 0;
+}
+
+$('btnUndo').addEventListener('click', () => {
+  if (undoStack.length === 0) return;
+  state.grid = undoStack.pop();
+  state.width = state.grid[0].length;
+  state.height = state.grid.length;
+  selectedLine = null;
+  $('selectionBar').classList.add('hidden');
+  renderGridEditor();
+  saveProject();
+  updateUndoButton();
+});
+
 $('btnAddRowTop').addEventListener('click', () => {
+  pushUndoSnapshot();
   state.grid.unshift(new Array(state.grid[0].length).fill(bgIndex()));
   afterGridStructureChange();
 });
 $('btnAddRowBottom').addEventListener('click', () => {
+  pushUndoSnapshot();
   state.grid.push(new Array(state.grid[0].length).fill(bgIndex()));
   afterGridStructureChange();
 });
 $('btnRemoveRowTop').addEventListener('click', () => {
-  if (state.grid.length > 1) state.grid.shift();
+  if (state.grid.length > 1) {
+    pushUndoSnapshot();
+    state.grid.shift();
+  }
   afterGridStructureChange();
 });
 $('btnRemoveRowBottom').addEventListener('click', () => {
-  if (state.grid.length > 1) state.grid.pop();
+  if (state.grid.length > 1) {
+    pushUndoSnapshot();
+    state.grid.pop();
+  }
   afterGridStructureChange();
 });
 $('btnAddColLeft').addEventListener('click', () => {
+  pushUndoSnapshot();
   state.grid.forEach(row => row.unshift(bgIndex()));
   afterGridStructureChange();
 });
 $('btnAddColRight').addEventListener('click', () => {
+  pushUndoSnapshot();
   state.grid.forEach(row => row.push(bgIndex()));
   afterGridStructureChange();
 });
 $('btnRemoveColLeft').addEventListener('click', () => {
-  if (state.grid[0].length > 1) state.grid.forEach(row => row.shift());
+  if (state.grid[0].length > 1) {
+    pushUndoSnapshot();
+    state.grid.forEach(row => row.shift());
+  }
   afterGridStructureChange();
 });
 $('btnRemoveColRight').addEventListener('click', () => {
-  if (state.grid[0].length > 1) state.grid.forEach(row => row.pop());
+  if (state.grid[0].length > 1) {
+    pushUndoSnapshot();
+    state.grid.forEach(row => row.pop());
+  }
   afterGridStructureChange();
 });
 
