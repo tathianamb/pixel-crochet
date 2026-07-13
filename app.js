@@ -626,7 +626,59 @@ gridCanvas.addEventListener('click', (e) => {
     }
     return;
   }
+  // Clique dentro da grade (numa célula específica) -> abre o seletor de cor
+  if (clickX < gridPixelW && clickY < gridPixelH) {
+    const col = Math.floor(clickX / CELL_PX);
+    const row = Math.floor(clickY / CELL_PX);
+    if (row >= 0 && row < gh && col >= 0 && col < gw) {
+      openCellColorModal(row, col);
+    }
+    return;
+  }
 });
+
+// ---------- Modal de cor de célula específica ----------
+let cellBeingEdited = null; // { row, col }
+
+function openCellColorModal(row, col) {
+  cellBeingEdited = { row, col };
+  $('cellColorModalTitle').textContent = `Carreira ${row + 1}, ponto ${col + 1}`;
+
+  const swatchesEl = $('cellColorSwatches');
+  swatchesEl.innerHTML = '';
+  const currentColorIndex = state.grid[row][col];
+
+  state.palette.forEach((hex, idx) => {
+    const swatch = document.createElement('div');
+    swatch.className = 'cell-color-swatch' + (idx === currentColorIndex ? ' current' : '');
+    swatch.style.background = hex;
+    if (idx === currentColorIndex) swatch.textContent = '✓';
+    swatch.addEventListener('click', () => applyCellColor(idx));
+    swatchesEl.appendChild(swatch);
+  });
+
+  $('cellColorModal').classList.remove('hidden');
+}
+
+function closeCellColorModal() {
+  $('cellColorModal').classList.add('hidden');
+  cellBeingEdited = null;
+}
+
+function applyCellColor(colorIndex) {
+  if (!cellBeingEdited) return;
+  const { row, col } = cellBeingEdited;
+  if (state.grid[row][col] !== colorIndex) {
+    pushUndoSnapshot();
+    state.grid[row][col] = colorIndex;
+    renderGridEditor();
+    saveProject();
+  }
+  closeCellColorModal();
+}
+
+$('btnCancelCellColor').addEventListener('click', closeCellColorModal);
+$('cellColorModalBackdrop').addEventListener('click', closeCellColorModal);
 
 function showSelectionBar() {
   if (!selectedLine) {

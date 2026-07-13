@@ -322,6 +322,54 @@
     flex-wrap: wrap;
   }
 
+  .cell-color-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .cell-color-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(43,39,35,0.5);
+  }
+  .cell-color-modal-content {
+    position: relative;
+    background: var(--card);
+    border-radius: 14px;
+    padding: 22px;
+    width: min(320px, 85vw);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  }
+  .cell-color-modal-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .cell-color-swatches {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .cell-color-swatch {
+    aspect-ratio: 1;
+    border-radius: 10px;
+    border: 2px solid var(--border);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+  }
+  .cell-color-swatch.current {
+    border-color: var(--thread-red);
+    border-width: 3px;
+  }
+
   .stats-bar {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.8rem;
@@ -546,7 +594,7 @@
         <button class="btn-outline" id="btnRemoveColRight">− Coluna direita</button>
       </div>
 
-      <p class="hint" style="margin-top:18px; margin-bottom: 8px;">Ou toque num número na borda do gráfico para excluir uma linha/coluna específica:</p>
+      <p class="hint" style="margin-top:18px; margin-bottom: 8px;">Toque num número na borda do gráfico para excluir uma linha/coluna específica. Toque numa célula da grade para trocar a cor dela.</p>
 
       <div class="selection-bar hidden" id="selectionBar">
         <span id="selectionLabel"></span>
@@ -601,6 +649,16 @@
     </div>
   </section>
 
+</div>
+
+<!-- Modal de seleção de cor para uma célula específica -->
+<div class="cell-color-modal hidden" id="cellColorModal">
+  <div class="cell-color-modal-backdrop" id="cellColorModalBackdrop"></div>
+  <div class="cell-color-modal-content">
+    <div class="cell-color-modal-title" id="cellColorModalTitle">Ponto (linha, coluna)</div>
+    <div class="cell-color-swatches" id="cellColorSwatches"></div>
+    <button class="btn-outline btn-block" id="btnCancelCellColor" style="margin-top:14px;">Cancelar</button>
+  </div>
 </div>
 
 <div class="bottombar">
