@@ -390,6 +390,10 @@ function rgbToHex(r, g, b) {
 // ---------- Tela 2: ajuste de bordas ----------
 const gridCanvas = $('gridCanvas');
 const gctx = gridCanvas.getContext('2d');
+const LABEL_MARGIN = 26; // espaço reservado para os números clicáveis
+
+// Seleção atual: { type: 'row'|'col', index: number } ou null
+let selectedLine = null;
 
 function colorForIndex(idx) {
   return state.palette[idx] || '#cccccc';
@@ -400,8 +404,20 @@ function renderGridEditor() {
   const grid = state.grid;
   const gh = grid.length;
   const gw = grid[0].length;
-  gridCanvas.width = gw * CELL_PX;
-  gridCanvas.height = gh * CELL_PX;
+  gridCanvas.width = gw * CELL_PX + LABEL_MARGIN;
+  gridCanvas.height = gh * CELL_PX + LABEL_MARGIN;
+
+  gctx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+
+  // Destaque de fundo da linha/coluna selecionada (desenhado antes das células)
+  if (selectedLine) {
+    gctx.fillStyle = 'rgba(178,58,46,0.18)';
+    if (selectedLine.type === 'row') {
+      gctx.fillRect(0, selectedLine.index * CELL_PX, gw * CELL_PX, CELL_PX);
+    } else {
+      gctx.fillRect(selectedLine.index * CELL_PX, 0, CELL_PX, gh * CELL_PX);
+    }
+  }
 
   for (let y = 0; y < gh; y++) {
     for (let x = 0; x < gw; x++) {
@@ -421,8 +437,95 @@ function renderGridEditor() {
     gctx.beginPath(); gctx.moveTo(0, y*CELL_PX); gctx.lineTo(gw*CELL_PX, y*CELL_PX); gctx.stroke();
   }
 
+  // Área dos números: linhas à direita, colunas embaixo
+  gctx.font = '11px JetBrains Mono, monospace';
+  gctx.textAlign = 'center';
+  gctx.textBaseline = 'middle';
+
+  for (let y = 0; y < gh; y++) {
+    const rowNumber = y + 1;
+    const isSelected = selectedLine && selectedLine.type === 'row' && selectedLine.index === y;
+    gctx.fillStyle = isSelected ? '#B23A2E' : '#6b6459';
+    gctx.font = isSelected ? 'bold 11px JetBrains Mono, monospace' : '11px JetBrains Mono, monospace';
+    gctx.fillText(String(rowNumber), gw*CELL_PX + LABEL_MARGIN/2, y*CELL_PX + CELL_PX/2);
+  }
+  for (let x = 0; x < gw; x++) {
+    const colNumber = x + 1;
+    const isSelected = selectedLine && selectedLine.type === 'col' && selectedLine.index === x;
+    gctx.fillStyle = isSelected ? '#B23A2E' : '#6b6459';
+    gctx.font = isSelected ? 'bold 11px JetBrains Mono, monospace' : '11px JetBrains Mono, monospace';
+    gctx.fillText(String(colNumber), x*CELL_PX + CELL_PX/2, gh*CELL_PX + LABEL_MARGIN/2);
+  }
+
   updateGridStats();
 }
+
+gridCanvas.addEventListener('click', (e) => {
+  const rect = gridCanvas.getBoundingClientRect();
+  const scaleX = gridCanvas.width / rect.width;
+  const scaleY = gridCanvas.height / rect.height;
+  const clickX = (e.clientX - rect.left) * scaleX;
+  const clickY = (e.clientY - rect.top) * scaleY;
+
+  const gw = state.grid[0].length;
+  const gh = state.grid.length;
+  const gridPixelW = gw * CELL_PX;
+  const gridPixelH = gh * CELL_PX;
+
+  // Clique na área de números de coluna (embaixo da grade)
+  if (clickY > gridPixelH && clickX < gridPixelW) {
+    const col = Math.floor(clickX / CELL_PX);
+    if (col >= 0 && col < gw) {
+      selectedLine = { type: 'col', index: col };
+      showSelectionBar();
+      renderGridEditor();
+    }
+    return;
+  }
+  // Clique na área de números de linha (à direita da grade)
+  if (clickX > gridPixelW && clickY < gridPixelH) {
+    const row = Math.floor(clickY / CELL_PX);
+    if (row >= 0 && row < gh) {
+      selectedLine = { type: 'row', index: row };
+      showSelectionBar();
+      renderGridEditor();
+    }
+    return;
+  }
+});
+
+function showSelectionBar() {
+  if (!selectedLine) {
+    $('selectionBar').classList.add('hidden');
+    return;
+  }
+  const label = selectedLine.type === 'row'
+    ? `Carreira ${selectedLine.index + 1} selecionada`
+    : `Coluna ${selectedLine.index + 1} selecionada`;
+  $('selectionLabel').textContent = label;
+  $('selectionBar').classList.remove('hidden');
+}
+
+$('btnCancelSelection').addEventListener('click', () => {
+  selectedLine = null;
+  $('selectionBar').classList.add('hidden');
+  renderGridEditor();
+});
+
+$('btnDeleteSelection').addEventListener('click', () => {
+  if (!selectedLine) return;
+  const grid = state.grid;
+  if (selectedLine.type === 'row') {
+    if (grid.length <= 1) { alert('Não é possível excluir a única carreira restante.'); return; }
+    grid.splice(selectedLine.index, 1);
+  } else {
+    if (grid[0].length <= 1) { alert('Não é possível excluir a única coluna restante.'); return; }
+    grid.forEach(row => row.splice(selectedLine.index, 1));
+  }
+  selectedLine = null;
+  $('selectionBar').classList.add('hidden');
+  afterGridStructureChange();
+});
 
 function updateGridStats() {
   const grid = state.grid;
@@ -478,6 +581,8 @@ $('btnRemoveColRight').addEventListener('click', () => {
 function afterGridStructureChange() {
   state.width = state.grid[0].length;
   state.height = state.grid.length;
+  selectedLine = null;
+  $('selectionBar').classList.add('hidden');
   renderGridEditor();
   saveProject();
 }

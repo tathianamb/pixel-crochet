@@ -306,6 +306,22 @@
     height: auto;
   }
 
+  .selection-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--thread-red-soft);
+    border: 1.5px solid var(--thread-red);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--ink);
+    flex-wrap: wrap;
+  }
+
   .stats-bar {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.8rem;
@@ -464,7 +480,17 @@
         <button class="btn-outline" id="btnRemoveColRight">− Coluna direita</button>
       </div>
 
-      <div class="grid-scroll" style="margin-top: 18px;">
+      <p class="hint" style="margin-top:18px; margin-bottom: 8px;">Ou toque num número na borda do gráfico para excluir uma linha/coluna específica:</p>
+
+      <div class="selection-bar hidden" id="selectionBar">
+        <span id="selectionLabel"></span>
+        <div style="display:flex; gap:8px;">
+          <button class="btn-outline" id="btnCancelSelection" style="min-height:40px; padding:8px 14px;">Cancelar</button>
+          <button class="btn-danger-outline" id="btnDeleteSelection" style="min-height:40px; padding:8px 14px;">Excluir</button>
+        </div>
+      </div>
+
+      <div class="grid-scroll" style="margin-top: 10px;">
         <canvas id="gridCanvas"></canvas>
       </div>
 
